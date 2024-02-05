@@ -1,0 +1,51 @@
+# !/bin/bash
+
+error_message="One of options is required: [detector, build, container, client-sim, attack]"
+PORT=3000
+NETFLOW_PORT=5005
+IP=localhost
+
+case "$1" in
+build)
+    podman image rm dos-attack-target-img:latest
+    podman build --tag dos-target-img:$2 .
+    ;;
+
+container)
+    podman run \
+        -it \
+        --rm \
+        -p $PORT:80 \
+        --cap-add NET_RAW \
+        --cap-add CAP_NET_RAW \
+        --name dos-target-container \
+        dos-target-img:$2
+    ;;
+
+detector)
+    export COLLECTOR_IP=$IP
+    export COLLECTOR_PORT=$NETFLOW_PORT
+    python3 ./app
+    ;;
+
+client-sim)
+    python3 traffic/client.py \
+        --host $IP \
+        --port $PORT \
+        --stats ./data/user_traffix_stats.csv
+    ;;
+
+attack)
+    python3 traffic/attack.py \
+        --host $IP \
+        --port $PORT \
+        $2 $3 \
+        $4 $5 
+    ;;
+
+*)
+    echo $error_message
+    exit 1
+    ;;
+esac
+
